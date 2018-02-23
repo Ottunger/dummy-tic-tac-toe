@@ -1,22 +1,24 @@
 import * as express from "express";
-import {MongoClient} from "mongodb";
+import {Db, MongoClient} from "mongodb";
 import * as http from "http";
-let dbClient: MongoClient;
+import {GameController} from "./controllers/GameController";
+let dbClient: Db, dbServer: MongoClient;
 
-function connect(callback: ((res: boolean) => void)) {
-    MongoClient.connect(process.env.TTT_DATABASE_URL || 'mongodb://localhost:27017/ttt', (err, d) => {
+function connect(callback: ((res: any) => void)) {
+    MongoClient.connect(process.env.TTT_DATABASE_URL || 'mongodb://localhost:27017', (err, d) => {
         if(!err) {
-            dbClient = d;
-            callback(false);
+            dbServer = d;
+            dbClient = d.db('ttt');
+            callback(undefined);
         } else {
-            callback(true);
+            callback(err);
         }
     });
 }
 
 function close() {
-    if(dbClient !== undefined) {
-        dbClient.close();
+    if(dbServer !== undefined) {
+        dbServer.close();
     }
     process.exit(0);
 }
@@ -24,7 +26,8 @@ function close() {
 //Now connect to DB then start serving requests
 connect(e => {
     if(e) {
-        console.log('Bootstrap could not be completed.');
+        console.error(e);
+        console.error('Bootstrap could not be completed.');
         process.exit();
     }
 
@@ -47,5 +50,6 @@ connect(e => {
 
     const server = http.createServer(app);
     server.listen(process.env.TTT_PORT || 8100);
-    console.log('Booststrap finished.');
+    new GameController(app, server, dbClient);
+    console.log("App started. Open your browser on port 8100.")
 });

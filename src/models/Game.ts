@@ -1,29 +1,56 @@
 import {CellState} from "./CellState";
+import {DatabaseItem} from "./DatabaseItem";
 
-export class Game {
+export class Game extends DatabaseItem {
+    protected collection = 'games';
     grid: CellState[][];
+    completed = false;
 
-    constructor(private width: number) {
+    constructor(width: number, public playerIds: string[], public nextPlayerId: string) {
+        super();
         this.grid = new Array(width);
-        this.grid.forEach(row => {
-            row = new Array(width);
-            row.forEach(cell => cell = CellState.CHECK_NULL);
+        this.grid.forEach((_, i) => {
+            this.grid[i] = new Array(width);
+            this.grid[i].fill(CellState.CHECK_NULL);
         });
     }
 
-    cross(row: number, column: number, state: CellState): boolean {
+    static fromInteface(origin: Game): Game {
+        const game = new Game(origin.grid.length, origin.playerIds, origin.nextPlayerId);
+        game._id = origin._id;
+        game.grid = origin.grid;
+        game.completed = origin.completed;
+        return game;
+    }
+
+    getPersistableFields(): any {
+        return {
+            grid: this.grid,
+            playerIds: this.playerIds,
+            nextPlayerId: this.nextPlayerId,
+            completed: this.completed
+        };
+    }
+
+    toNextPlayer() {
+        let index = this.playerIds.indexOf(this.nextPlayerId);
+        index = (index + 1) % this.playerIds.length;
+        this.nextPlayerId = this.playerIds[index];
+    }
+
+    cross(row: number, column: number, state: CellState) {
         this.grid[row][column] = state;
-        return this.findWon();
+        this.completed = this.findWon();
     }
 
     findWon(): boolean {
         let previousState: CellState;
         let won: boolean;
 
-        for(let i = 0; i < this.width; i++) {
+        for(let i = 0; i < this.grid.length; i++) {
             previousState = this.grid[i][0];
             won = true;
-            for(let j = 1; j < this.width; j++) {
+            for(let j = 1; j < this.grid.length; j++) {
                 if(this.grid[i][j] === CellState.CHECK_O) {
                     if(previousState === CellState.CHECK_X) {
                         previousState = CellState.CHECK_O;
@@ -46,10 +73,10 @@ export class Game {
             if(won)
                 return true;
         }
-        for(let i = 0; i < this.width; i++) {
+        for(let i = 0; i < this.grid.length; i++) {
             previousState = this.grid[0][i];
             won = true;
-            for(let j = 1; j < this.width; j++) {
+            for(let j = 1; j < this.grid.length; j++) {
                 if(this.grid[j][i] === CellState.CHECK_O) {
                     if(previousState === CellState.CHECK_X) {
                         previousState = CellState.CHECK_O;
@@ -74,7 +101,7 @@ export class Game {
         }
         previousState = this.grid[0][0];
         won = true;
-        for(let i = 1; i < this.width; i++) {
+        for(let i = 1; i < this.grid.length; i++) {
             if(this.grid[i][i] === CellState.CHECK_O) {
                 if(previousState === CellState.CHECK_X) {
                     previousState = CellState.CHECK_O;
@@ -96,10 +123,10 @@ export class Game {
         }
         if(won)
             return true;
-        previousState = this.grid[0][this.width - 1];
+        previousState = this.grid[0][this.grid.length - 1];
         won = true;
-        for(let i = 1; i < this.width; i++) {
-            if(this.grid[i][this.width - 1 - i] === CellState.CHECK_O) {
+        for(let i = 1; i < this.grid.length; i++) {
+            if(this.grid[i][this.grid.length - 1 - i] === CellState.CHECK_O) {
                 if(previousState === CellState.CHECK_X) {
                     previousState = CellState.CHECK_O;
                 } else {
