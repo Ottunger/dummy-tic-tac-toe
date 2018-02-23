@@ -6,18 +6,20 @@ export enum GamePayloadAction {
     PLAY
 }
 
+export interface GamePayloadRaw {
+    action?: GamePayloadAction,
+    playerId?: string,
+    playerPassword?: string,
+    gameId?: string,
+    move?: {
+        row: number,
+        column: number,
+        state: CellState
+    }
+}
+
 export class GamePayload {
-    raw: {
-        action: GamePayloadAction,
-        playerId?: string,
-        playerPassword?: string,
-        gameId?: string,
-        move?: {
-            row: number,
-            column: number,
-            state: CellState
-        }
-    };
+    raw: GamePayloadRaw;
     private valid = true;
 
     constructor(msg: Data) {

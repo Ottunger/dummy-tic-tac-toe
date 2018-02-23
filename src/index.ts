@@ -2,6 +2,7 @@ import * as express from "express";
 import {Db, MongoClient} from "mongodb";
 import * as http from "http";
 import {GameController} from "./controllers/GameController";
+import * as Vorpal from "vorpal";
 let dbClient: Db, dbServer: MongoClient;
 
 function connect(callback: ((res: any) => void)) {
@@ -50,6 +51,10 @@ connect(e => {
 
     const server = http.createServer(app);
     server.listen(process.env.TTT_PORT || 8100);
-    new GameController(app, server, dbClient);
-    console.log("App started. Open your browser on port 8100.")
+
+    const cli = new Vorpal();
+    cli.delimiter("ttt-cli:").show();
+
+    new GameController(app, server, dbClient, cli);
+    cli.log("App started. Open your browser on port 8100.");
 });

@@ -2,24 +2,27 @@ import {CellState} from "./CellState";
 import {DatabaseItem} from "./DatabaseItem";
 
 export class Game extends DatabaseItem {
-    protected collection = 'games';
+    collection = 'games';
     grid: CellState[][];
     completed = false;
+    nextPlayerId: string;
 
-    constructor(width: number, public playerIds: string[], public nextPlayerId: string) {
+    constructor(width: number, public playerIds: string[]) {
         super();
         this.grid = new Array(width);
-        this.grid.forEach((_, i) => {
+        for(let i = 0; i < width; i++) {
             this.grid[i] = new Array(width);
             this.grid[i].fill(CellState.CHECK_NULL);
-        });
+        }
+        this.nextPlayerId = this.playerIds[0];
     }
 
     static fromInteface(origin: Game): Game {
-        const game = new Game(origin.grid.length, origin.playerIds, origin.nextPlayerId);
+        const game = new Game(origin.grid.length, origin.playerIds);
         game._id = origin._id;
         game.grid = origin.grid;
         game.completed = origin.completed;
+        game.nextPlayerId = origin.nextPlayerId;
         return game;
     }
 
