@@ -1,0 +1,37 @@
+{
+  "author": {
+    "name": "Mathonet Gregoire"
+  },
+  "bugs": {
+    "url": "https://github.com/Ottunger/dummy-tic-tac-toe/issues"
+  },
+  "description": "A very simple tic tac toe game",
+  "devDependencies": {
+    "@types/express": "^4.11.1",
+    "@types/mongodb": "^3.0.5",
+    "concurrently": "^3.5.1",
+    "tslint": "^5.9.1",
+    "typescript": "^2.7.2"
+  },
+  "dependencies": {
+    "express": "^4.16.2",
+    "mongodb": "^3.0.2"
+  },
+  "homepage": "https://github.com/Ottunger/dummy-tic-tac-toe#readme",
+  "keywords": [
+    "tic-tac-toe",
+    "real-time"
+  ],
+  "license": "MIT",
+  "name": "dummy-tic-tac-toe",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ottunger/dummy-tic-tac-toe.git"
+  },
+  "scripts": {
+    "dev": "concurrently \"tsc\" \"node src/index.js\"",
+    "start": "tsc & node src/index.js",
+    "tslint": "tslint \"src/**/*.ts\" --fix"
+  },
+  "version": "0.0.1"
+}
