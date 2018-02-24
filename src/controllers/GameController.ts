@@ -2,7 +2,7 @@ import {Server} from "http";
 import {Express} from "express";
 import * as WebSocket from "ws";
 import {Db} from "mongodb";
-import {GamePayload, GamePayloadAction, GamePayloadRaw} from "../models/GamePayload";
+import {GamePayload, GamePayloadAction, GamePayloadRaw, GameResponseType} from "../models/GamePayload";
 import {Game} from "../models/Game";
 import {User} from "../models/User";
 
@@ -18,7 +18,7 @@ function generateError(code: number, msg: string) {
     });
 }
 
-function generateResponse(code: number, payload: any) {
+function generateResponse(code: GameResponseType, payload: any) {
     return JSON.stringify({
         code: code,
         message: payload
@@ -49,7 +49,7 @@ function authUser(payload: GamePayloadRaw, dbClient: Db, ws: WebSocket, sessions
                     ws: ws
                 });
             }
-            callback(undefined, generateResponse(0, games.map(game => game._id)));
+            callback(undefined, generateResponse(GameResponseType.GAMES, games));
         });
     });
 }
@@ -85,12 +85,7 @@ function playUser(payload: GamePayloadRaw, dbClient: Db, ws: WebSocket, sessions
             game = Game.fromInteface(game);
             game.cross(payload.move.row, payload.move.column, payload.move.state);
             game.toNextPlayer();
-            const response = generateResponse(0, {
-                gameId: game._id,
-                completed: game.completed,
-                lastPlayerId: user._id,
-                nextPlayerId: game.nextPlayerId
-            });
+            const response = generateResponse(GameResponseType.RESULT, game.getPersistableFields());
             sessions.filter(session => game.playerIds.indexOf(session.playerId) !== -1).forEach(session => {
                 callback(undefined, response, session.ws);
             });
@@ -157,6 +152,12 @@ export class GameController {
                    this.sessions.splice(sessionIndex, 1);
                }
             });
+            ws.on('error', () => {
+                const sessionIndex = this.sessions.findIndex(session => session.ws === ws);
+                if(sessionIndex !== -1) {
+                    this.sessions.splice(sessionIndex, 1);
+                }
+            });
             ws.on('message', msg => {
                 const payload = new GamePayload(msg);
                 if(!payload.isValid())
@@ -171,7 +172,5 @@ export class GameController {
                 }
             });
         });
-
-        server.listen(process.env.TTT_WS_PORT || 8101);
     }
 }

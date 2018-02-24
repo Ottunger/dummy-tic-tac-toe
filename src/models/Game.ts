@@ -28,6 +28,7 @@ export class Game extends DatabaseItem {
 
     getPersistableFields(): any {
         return {
+            _id: this._id,
             grid: this.grid,
             playerIds: this.playerIds,
             nextPlayerId: this.nextPlayerId,

@@ -6,6 +6,11 @@ export enum GamePayloadAction {
     PLAY
 }
 
+export enum GameResponseType {
+    GAMES,
+    RESULT
+}
+
 export interface GamePayloadRaw {
     action?: GamePayloadAction,
     playerId?: string,

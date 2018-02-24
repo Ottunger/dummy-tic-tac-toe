@@ -39,11 +39,11 @@ connect(e => {
         res.set('Access-Control-Allow-Headers', 'Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With');
         next();
     });
-    app.use(express.static(__dirname + 'public'));
+    app.use(express.static(__dirname + '/../public'));
 
     //Error route
     app.use((req, res) => {
-        res.type('application/json').status(404).json({error: 'client.notFound'});
+        res.type('application/json').status(404).json({error: 'client.notFound: ' + req.path});
     });
 
     process.on('SIGTERM', close);

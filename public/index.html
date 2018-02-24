@@ -4,6 +4,66 @@
     <title>Tic Tac Toe</title>
 </head>
 <body>
+    <script type="text/javascript">
+        function gameLine(game) {
+            return '<td>' + game._id + '</td><td><textarea rows="' + game.grid.length + '">' + game.grid.map(line => line.map(cell => {
+                switch(cell) {
+                    case 0:
+                        return ' ';
+                    case 1:
+                        return 'O';
+                    case 2:
+                        return 'X';
+                }
+            })).join('\r\n') + '</textarea></td><td><button onclick="play(' + game._id + ')">Play</button></td>';
+        }
+        let ws = new WebSocket('ws://localhost:8100');
+        ws.onmessage = data => {
+            const raw = JSON.parse(data.data.toString());
+            switch(raw.code) {
+                case 0:
+                    document.getElementById('games').innerHTML = raw.message.map(game => {
+                       return '<tr id="game-' + game._id + '">' + gameLine(game) + '</tr>';
+                    });
+                    break;
+                case 1:
+                    document.getElementById('game-' + raw.message._id).innerHTML = gameLine(raw.message);
+                    break;
+            }
+        };
+        function auth() {
+            ws.send(JSON.stringify({
+                action: 0,
+                playerId: document.getElementById('playerId').value,
+                playerPassword: document.getElementById('playerPassword').value
+            }));
+        }
+        function findMove(gameId) {
 
+        }
+        function play(gameId) {
+            ws.send(JSON.stringify({
+                action: 1,
+                playerId: document.getElementById('playerId').value,
+                playerPassword: document.getElementById('playerPassword').value,
+                gameId: gameId,
+                move: findMove(gameId)
+            }));
+        }
+    </script>
+    <table>
+        <tr>
+            <td>
+                Login: <input type="text" id="playerId"/>
+            </td>
+            <td>
+                Password: <input type="text" id="playerPassword"/>
+            </td>
+            <td>
+                <button onclick="auth()">Authenticate</button>
+            </td>
+        </tr>
+    </table>
+    <table id="games"></table>
 </body>
 </html>
