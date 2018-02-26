@@ -28,16 +28,16 @@ function generateResponse(code: GameResponseType, payload: any) {
 function authUser(payload: GamePayloadRaw, dbClient: Db, ws: WebSocket, sessions: Session[], callback: ((err: any, payload: string) => void)) {
     dbClient.collection('users').findOne({_id: payload.playerId}, (err, user: User) => {
         if (err || !user) {
-            callback(err, generateError(1, 'Cannot find the user'));
+            callback(err, generateError(-1, 'Cannot find the user'));
             return;
         }
         if(user.password !== payload.playerPassword) {
-            callback(true, generateError(1, 'Wrong auth'));
+            callback(true, generateError(-1, 'Wrong auth'));
             return;
         }
         dbClient.collection('games').find({playerIds: payload.playerId, completed: false}).toArray((err, games: Game[]) => {
             if (err) {
-                callback(err, generateError(1, 'Cannot find the game'));
+                callback(err, generateError(-1, 'Cannot find the game'));
                 return;
             }
             let session = sessions.find(session => session.ws === ws);
@@ -57,33 +57,36 @@ function authUser(payload: GamePayloadRaw, dbClient: Db, ws: WebSocket, sessions
 function playUser(payload: GamePayloadRaw, dbClient: Db, ws: WebSocket, sessions: Session[], callback: ((err: any, payload: string, target: WebSocket) => void)) {
     dbClient.collection('users').findOne({_id: payload.playerId}, (err, user: User) => {
         if (err || !user) {
-            callback(undefined, generateError(1, 'Cannot find the user'), ws);
+            callback(undefined, generateError(-1, 'Cannot find the user'), ws);
             return;
         }
         if(user.password !== payload.playerPassword) {
-            callback(true, generateError(1, 'Wrong auth'), ws);
+            callback(true, generateError(-1, 'Wrong auth'), ws);
             return;
         }
         if(sessions.findIndex(session => session.playerId === user._id) === -1 ||
             sessions.findIndex(session => session.ws === ws) === -1) {
-            callback(true, generateError(1, 'Not yet authenticated'), ws);
+            callback(true, generateError(-1, 'Not yet authenticated'), ws);
             return;
         }
         dbClient.collection('games').findOne({_id: payload.gameId}, (err, game: Game) => {
             if (err || !game) {
-                callback(err, generateError(1, 'Cannot find the game'), ws);
+                callback(err, generateError(-1, 'Cannot find the game'), ws);
                 return;
             }
             if(game.playerIds.indexOf(user._id) === -1) {
-                callback(true, generateError(1, 'You are not part of this game'), ws);
+                callback(true, generateError(-1, 'You are not part of this game'), ws);
                 return;
             }
             if(game.nextPlayerId !== user._id) {
-                callback(true, generateError(1, 'You are not the next person to play'), ws);
+                callback(true, generateError(-1, 'You are not the next person to play'), ws);
                 return;
             }
             game = Game.fromInteface(game);
-            game.cross(payload.move.row, payload.move.column, payload.move.state);
+            if(!game.cross(payload.move.row, payload.move.column, payload.move.state)) {
+                callback(true, generateError(-1, 'This cell is already settled'), ws);
+                return;
+            }
             game.toNextPlayer();
             const response = generateResponse(GameResponseType.RESULT, game.getPersistableFields());
             sessions.filter(session => game.playerIds.indexOf(session.playerId) !== -1).forEach(session => {
@@ -124,11 +127,17 @@ export class GameController {
                    cb();
                 });
             });
-        cli.command('play <username> <password> <row> <column> <marker>', 'Play a row/column as a user.')
+        cli.command('play <username> <password> <game-id> <row> <column> <marker>', 'Play a row/column as a user (O/X).')
             .action((args: {[id: string]: string}, cb: (() => void)) => {
                 playUser({
                     playerId: args.username,
-                    playerPassword: args.password
+                    playerPassword: args.password,
+                    gameId: args['game-id'].toString(),
+                    move: {
+                        row: <number><any>args.row,
+                        column: <number><any>args.column,
+                        state: args.marker === 'X'? 2 : 1
+                    }
                 }, dbClient, undefined, this.sessions, sendResponse.bind(undefined, cli, cb));
             });
         cli.command('add-user <username> <password>', 'Create a user.')
@@ -161,7 +170,7 @@ export class GameController {
             ws.on('message', msg => {
                 const payload = new GamePayload(msg);
                 if(!payload.isValid())
-                    ws.send(generateError(1, 'Wrong message'));
+                    ws.send(generateError(-1, 'Wrong message'));
                 switch(payload.raw.action) {
                     case GamePayloadAction.AUTH:
                         authUser(payload.raw, dbClient, ws, this.sessions, (err, res) => ws.send(res));

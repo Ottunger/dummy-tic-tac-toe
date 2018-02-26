@@ -42,9 +42,13 @@ export class Game extends DatabaseItem {
         this.nextPlayerId = this.playerIds[index];
     }
 
-    cross(row: number, column: number, state: CellState) {
-        this.grid[row][column] = state;
-        this.completed = this.findWon();
+    cross(row: number, column: number, state: CellState): boolean {
+        if(this.grid[row][column] === CellState.CHECK_NULL) {
+            this.grid[row][column] = state;
+            this.completed = this.findWon();
+            return true;
+        }
+        return false;
     }
 
     findWon(): boolean {

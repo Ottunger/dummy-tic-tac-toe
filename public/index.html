@@ -5,8 +5,9 @@
 </head>
 <body>
     <script type="text/javascript">
+        window._games = [];
         function gameLine(game) {
-            return '<td>' + game._id + '</td><td><textarea rows="' + game.grid.length + '">' + game.grid.map(line => line.map(cell => {
+            return '<td>' + game._id + '</td><td><textarea id="game-view-' + game._id + '" rows="' + game.grid.length + '">' + game.grid.map(line => line.map(cell => {
                 switch(cell) {
                     case 0:
                         return ' ';
@@ -15,18 +16,24 @@
                     case 2:
                         return 'X';
                 }
-            })).join('\r\n') + '</textarea></td><td><button onclick="play(' + game._id + ')">Play</button></td>';
+            })).join('\n') + '</textarea></td><td><button onclick="play(\'' + game._id + '\')">Play</button></td>';
         }
         let ws = new WebSocket('ws://localhost:8100');
         ws.onmessage = data => {
             const raw = JSON.parse(data.data.toString());
             switch(raw.code) {
+                case -1:
+                    alert(raw.message);
+                    break;
                 case 0:
-                    document.getElementById('games').innerHTML = raw.message.map(game => {
+                    window._games = raw.message;
+                    document.getElementById('games').innerHTML = window._games.map(game => {
                        return '<tr id="game-' + game._id + '">' + gameLine(game) + '</tr>';
                     });
                     break;
                 case 1:
+                    const gameIndex = window._games.findIndex(g => g._id === raw.message._id);
+                    window._games[gameIndex] = raw.message;
                     document.getElementById('game-' + raw.message._id).innerHTML = gameLine(raw.message);
                     break;
             }
@@ -39,16 +46,60 @@
             }));
         }
         function findMove(gameId) {
-
+            const game = window._games.find(g => g._id === gameId);
+            let newGrid = document.getElementById('game-view-' + gameId).value.split('\n');
+            let changes = 0, changeI, changeJ, changeV;
+            for(let i = 0; i < game.grid.length; i++) {
+                const newLine = newGrid[i].split(',').map(cell => {
+                    switch(cell) {
+                        case ' ':
+                            return 0;
+                        case 'O':
+                            return 1;
+                        case 'X':
+                            return 2;
+                        default:
+                            alert('Character ' + cell + ' not recognized!');
+                            changes = 2;
+                            return 0;
+                    }
+                });
+                for(let j = 0; j < game.grid[i].length; j++) {
+                    if(game.grid[i][j] !== newLine[j]) {
+                        if(changes === 0) {
+                            changeI = i;
+                            changeJ = j;
+                            changeV = newLine[j];
+                        }
+                        changes++;
+                    }
+                }
+            }
+            if(changes === 0) {
+                alert('Do at least a change!');
+                return undefined;
+            } else if(changes === 1) {
+                return {
+                    row: changeI,
+                    column: changeJ,
+                    state: changeV
+                };
+            } else {
+                alert('You should only change one letter.');
+                return undefined;
+            }
         }
         function play(gameId) {
-            ws.send(JSON.stringify({
-                action: 1,
-                playerId: document.getElementById('playerId').value,
-                playerPassword: document.getElementById('playerPassword').value,
-                gameId: gameId,
-                move: findMove(gameId)
-            }));
+            const move = findMove(gameId);
+            if(move) {
+                ws.send(JSON.stringify({
+                    action: 1,
+                    playerId: document.getElementById('playerId').value,
+                    playerPassword: document.getElementById('playerPassword').value,
+                    gameId: gameId,
+                    move: move
+                }));
+            }
         }
     </script>
     <table>
